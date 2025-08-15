@@ -1,0 +1,73 @@
+
+
+/* Form layout */
+.row {
+  margin-bottom: 20px;
+}
+
+.lbl-div label {
+  position: relative;
+  display: block;
+  font-weight: 600;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.txtbox-div {
+  position: relative;
+}
+
+.txtbox-div input {
+  width: 100%;
+  padding: 8px 36px 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+/* Eye icon in password field */
+.txtbox-div i {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #444;
+}
+
+
+
+/* Success and error messages */
+.err-msg {
+  display: block;
+  margin: 4px 0 8px 10px;
+  color: red;
+  font-size: 12px;
+}
+
+
+.txtbox-div select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: white;
+  -moz-appearance: none; /* hides default OS styles */
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23666' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.3s ease-in-out;
+}
+
+.txtbox-div select:focus {
+  border-color: #198754; /* Bootstrap green */
+  outline: none;
+}
+
+

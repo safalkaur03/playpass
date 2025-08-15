@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="tournamentsApp">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tournaments - Player Dashboard</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- AngularJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.3/angular.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    (function () {
+      var app = angular.module("tournamentsApp", []);
+
+      app.controller("tournamentsController", function ($scope, $http) {
+        $scope.sportsList = [];
+
+        $scope.loadSports = function () {
+            $http.get("/get-sports")
+                .then(function (res) {
+                    $scope.sportsList = res.data || [];
+                })
+                .catch(function () {
+                    alert("Error loading sports list");
+                });
+        };
+
+
+        $scope.citiesList = [];
+        $scope.tournaments = [];
+        $scope.selectedSport = "";
+        $scope.selectedCity = "";
+        $scope.selectedTournament = {};
+
+        // Load city list from server
+        $scope.loadCities = function () {
+          $http.get("/get-cities")
+            .then(function (res) {
+              $scope.citiesList = res.data || [];
+            });
+        };
+
+        // Fetch filtered tournaments
+        $scope.fetchTournaments = function () {
+          var url = "/fetch-tournaments?city=" + ($scope.selectedCity || "") +
+          "&sport=" + ($scope.selectedSport || "");
+
+          $http.get(url).then(function (response) {
+            $scope.tournaments = response.data || [];
+          }, function (err) {
+            alert("Error fetching tournaments");
+          });
+        };
+
+        // Show details modal
+        $scope.showDetails = function (tournament) {
+          $scope.selectedTournament = tournament;
+          var modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+          modal.show();
+        };
+
+        // Init
+        $scope.loadCities();
+        $scope.loadSports();
+
+      });
+    })();
+  </script>
+
+  <style>
+    body { background-color:#f8f9fa; min-height:100vh; display:flex; flex-direction:column; }
+    .container { flex:1; }
+    footer { background:#0f172a; color:#cbd5e1; }
+    .form-select, .btn { height:50px; font-size:1rem; }
+    .tournament-card { transition: transform 0.2s; }
+    .tournament-card:hover { transform: scale(1.02); }
+  </style>
+
+  <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      main {
+        flex: 1; /* pushes footer down */
+      }
+
+      footer {
+        background: #0f172a;
+        color: #cbd5e1;
+      }
+
+      footer small,
+      footer .small {
+        color: #cbd5e1 !important; /* override Bootstrap */
+      }
+    </style>
+</head>
+
+<body ng-controller="tournamentsController">
+
+  <main class="pt-5 mt-4 p-4 bg-light">
+    <div class="container bg-white p-4 border rounded shadow">
+      <h4 class="text-center mb-4">All Tournaments</h4>
+
+      <!-- Filters -->
+      <div class="row mb-4">
+        <div class="col-sm-4">
+          <label class="fw-bold text-danger">Select Sport</label>
+          <select class="form-select" ng-model="selectedSport" ng-options="s for s in sportsList">
+              <option value="">All Sports</option>
+          </select>
+
+        </div>
+        <div class="col-sm-4">
+          <label class="fw-bold text-danger">Select City</label>
+          <select class="form-select" ng-model="selectedCity">
+            <option value="">All Cities</option>
+            <option ng-repeat="c in citiesList" value="{{c}}">{{c}}</option>
+          </select>
+        </div>
+        <div class="col-sm-4 d-flex align-items-end">
+          <button class="btn btn-primary w-100" ng-click="fetchTournaments()">Find Tournaments</button>
+        </div>
+      </div>
+
+      <!-- Cards -->
+      <div class="row g-4">
+        <div class="col-md-4" ng-repeat="t in tournaments">
+          <div class="card tournament-card shadow-sm h-100">
+            <div class="card-body text-center">
+              <h5 class="card-title fw-bold">{{t.title}}</h5>
+              <p class="mb-1 text-muted">{{t.sport}}</p>
+              <p class="mb-1"><strong>{{t.city}}</strong></p>
+              <button class="btn btn-dark" ng-click="showDetails(t)">Contact Organiser</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div ng-if="tournaments.length == 0" class="text-center text-danger mt-4">
+        No tournaments found.
+      </div>
+    </div>
+  </main>
+
+  <!-- Details Modal -->
+  <div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" ng-if="selectedTournament">
+          <p><strong>Email ID of Organiser:</strong> {{selectedTournament.emailid}}</p>
+          <p><strong>Event Name:</strong> {{selectedTournament.title}}</p>
+          <p><strong>Date:</strong> {{selectedTournament.date | date:'dd-MM-yyyy'}}</p>
+          <p><strong>Time:</strong> {{selectedTournament.time}}</p>
+          <p><strong>Venue Address:</strong> {{selectedTournament.location}}</p>
+          <p><strong>City:</strong> {{selectedTournament.city}}</p>
+          <p><strong>Sport:</strong> {{selectedTournament.sport}}</p>
+          <p><strong>Minimum Age:</strong> {{selectedTournament.minage}}</p>
+          <p><strong>Maximum Age:</strong> {{selectedTournament.maxage}}</p>
+          <p><strong>Last Date to Register:</strong> {{selectedTournament.lastdate | date:'dd-MM-yyyy'}}</p>
+          <p><strong>Entry Fee:</strong> ₹{{selectedTournament.fee}}</p>
+          <p><strong>Winning Prize:</strong> ₹{{selectedTournament.prize}}</p>
+          <p><strong>Contact Number:</strong> {{selectedTournament.contact}}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- footer -->
+  <footer class="py-4">
+      <div
+        class="container d-flex flex-column flex-md-row justify-content-between align-items-center"
+      >
+        <div class="d-flex align-items-center gap-3">
+          <div
+            style="
+              width: 46px;
+              height: 46px;
+              background: linear-gradient(
+                135deg,
+                var(--accent2),
+                var(--accent1)
+              );
+              border-radius: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: 700;
+            "
+          >
+            PP
+          </div>
+          <div>
+            <div style="font-weight: 700">PlayPass</div>
+            <small>Connect • Book • Play</small>
+          </div>
+        </div>
+        <div class="mt-3 mt-md-0 small">© 2025 PlayPass • Built with ❤️</div>
+      </div>
+    </footer>
+
+</body>
+</html>

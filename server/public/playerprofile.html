@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Player Profile Form</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    function showPrev(fileRef, prevRef) {
+      const [file] = fileRef.files;
+      if (file) {
+        prevRef.src = URL.createObjectURL(file);
+      }
+    }
+  </script>
+
+    <script>
+    $(document).ready(function () {
+        let loggedInEmail = sessionStorage.getItem("loggedInEmail");
+        if (loggedInEmail) {
+            $("#emailid").val(loggedInEmail);
+            $.ajax({
+                type: "get",
+                url: "/player-details-get",
+                data: { emailid: loggedInEmail }
+            })
+            .then(function (data) {
+                if (typeof data === "string") {
+                    alert(data);
+                } else {
+                    $("#contact").val(data.contact);
+                    $("#address").val(data.address);
+                    $("#games").val(data.games);
+                    $("#otherinfo").val(data.otherinfo);
+                    $("#aadhaarPreview").attr("src", data.aadhaarFrontUrl);
+                    $("#profilePreview").attr("src", data.profilePicUrl);
+                }
+            })
+            .fail(function (err) {
+                alert("Error occurred: " + err.message);
+            });
+        }
+
+        // Upload Data
+        $("#btnUpload").click(function () {
+            let formData = new FormData(document.getElementById("playerForm"));
+
+            $.ajax({
+                url: "/player-details-save",
+                type: "post",
+                data: formData,
+                processData: false,
+                contentType: false
+            })
+            .then(function (resp) {
+                alert(resp);
+            })
+            .fail(function (err) {
+                alert("Error occurred: " + err.message);
+            });
+        });
+
+        // Modify Data
+        $("#btnModify").click(function () {
+            let formData = new FormData(document.getElementById("playerForm"));
+
+            $.ajax({
+                url: "/player-details-modify",
+                type: "post",
+                data: formData,
+                processData: false,
+                contentType: false
+            })
+            .then(function (resp) {
+                alert(resp);
+            })
+            .fail(function (err) {
+                alert("Error occurred: " + err.message);
+            });
+        });
+
+        // Get Data manually
+        $("#btnGet").click(function () {
+            $.ajax({
+                type: "get",
+                url: "/player-details-get",
+                data: { emailid: $("#emailid").val() }
+            })
+            .then(function (data) {
+                if (typeof data === "string") {
+                    alert(data);
+                } else {
+                    $("#contact").val(data.contact);
+                    $("#address").val(data.address);
+                    $("#games").val(data.games);
+                    $("#otherinfo").val(data.otherinfo);
+                    $("#aadhaarPreview").attr("src", data.aadhaarFrontUrl);
+                    $("#profilePreview").attr("src", data.profilePicUrl);
+                }
+            })
+            .fail(function (err) {
+                alert("Error occurred: " + err.message);
+            });
+        });
+
+        $(document).ajaxStart(function () {
+            $("#waiting").show();
+        });
+
+        $(document).ajaxStop(function () {
+            $("#waiting").hide();
+        });
+    });
+    </script>
+
+
+  <style>
+    footer { background:#0f172a; color:#cbd5e1 }
+  </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+<main class="flex-fill pt-5 mt-4">
+  <h3 class="text-center mb-4">Player Profile Form</h3>
+  <div class="container mt-4 mb-5">
+    <form id="playerForm" enctype="multipart/form-data">
+
+      <!-- Email ID and Get Data -->
+      <div class="row mb-3">
+        <div class="col-md-9">
+          <label for="emailid" class="form-label">Email ID</label>
+          <input type="email" id="emailid" name="emailid" class="form-control" />
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="button" class="btn btn-dark w-100" id="btnGet">Get Data</button>
+        </div>
+      </div>
+
+      <!-- Aadhaar Front Upload and Profile Pic -->
+      <div class="row mb-3">
+        <div class="col-md-6">
+          <label class="form-label">Upload Front of Aadhaar Card</label>
+          <input type="file" class="form-control" id="aadhaarFront" name="aadhaarFront" onchange="showPrev(this, document.getElementById('aadhaarPreview'))" />
+          <img id="aadhaarPreview" class="mt-2" height="100" alt="Aadhar Preview" />
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Profile Pic</label>
+          <input type="file" class="form-control" id="profilePic" name="profilePic" onchange="showPrev(this, document.getElementById('profilePreview'))" />
+          <img id="profilePreview" class="mt-2" height="100" alt="Profile Preview" />
+        </div>
+      </div>
+
+      <!-- Contact Number -->
+      <div class="mb-3">
+        <label class="form-label">Contact Number</label>
+        <input type="text" class="form-control" id="contact" name="contact" />
+      </div>
+
+      <!-- Address -->
+      <div class="mb-3">
+        <label class="form-label">Address</label>
+        <input type="text" class="form-control" id="address" name="address" placeholder="Street No, City" />
+      </div>
+
+      <!-- Interested Games -->
+      <div class="mb-3">
+        <label class="form-label">Interested Games</label>
+        <select class="form-select" id="games" name="games">
+          <option value="">Choose...</option>
+          <option>Football</option>
+          <option>Basketball</option>
+          <option>Tennis</option>
+          <option>Badminton</option>
+        </select>
+      </div>
+
+      <!-- Other Info -->
+      <div class="mb-3">
+        <label class="form-label">Other Info</label>
+        <textarea class="form-control" id="otherinfo" name="otherinfo" rows="3"></textarea>
+      </div>
+
+      <!-- Buttons -->
+      <div class="d-flex gap-3">
+        <button type="button" class="btn btn-dark w-50" id="btnUpload">Upload Data</button>
+        <button type="button" class="btn btn-dark w-50" id="btnModify">Modify</button>
+      </div>
+    </form>
+  </div>
+</main>
+
+<!-- FOOTER -->
+    <footer class="py-4">
+      <div
+        class="container d-flex flex-column flex-md-row justify-content-between align-items-center"
+      >
+        <div class="d-flex align-items-center gap-3">
+          <div
+            style="
+              width: 46px;
+              height: 46px;
+              background: linear-gradient(
+                135deg,
+                var(--accent2),
+                var(--accent1)
+              );
+              border-radius: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: 700;
+            "
+          >
+            PP
+          </div>
+          <div>
+            <div style="font-weight: 700">PlayPass</div>
+            <small class="text-light">Connect • Book • Play</small>
+          </div>
+        </div>
+
+        <div class="mt-3 mt-md-0 text-light small">
+          © 2025 PlayPass • Built with ❤️
+        </div>
+      </div>
+    </footer>
+
+</body>
+</html>

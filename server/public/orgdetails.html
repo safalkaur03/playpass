@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Organizer Details</title>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.min.js"
+      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- show prev -->
+    <script>
+      function showPrev(fileRef, prevRef) {
+        const [file] = fileRef.files;
+        if (file) {
+          prevRef.src = URL.createObjectURL(file);
+        }
+      }
+    </script>
+
+    <!-- AJAX -->
+    <script>
+      $(document).ready(function () {
+        // Auto-fill organizer details when page loads
+        let loggedInEmail = sessionStorage.getItem("loggedInEmail"); // store during login
+        if (loggedInEmail) {
+            $("#emailid").val(loggedInEmail);
+            $.ajax({
+                type: "get",
+                url: "/org-details-get",
+                data: { emailid: loggedInEmail }
+            })
+            .then(function (data) {
+                if (typeof data === "string") {
+                    alert(data);
+                } else {
+                    $("#orgname").val(data.orgname);
+                    $("#regnumber").val(data.regnumber);
+                    $("#address").val(data.address);
+                    $("#city").val(data.city);
+                    $("#sports").val(data.sports);
+                    $("#website").val(data.website);
+                    $("#insta").val(data.insta);
+                    $("#head").val(data.head);
+                    $("#contact").val(data.contact);
+                    $("#otherinfo").val(data.otherinfo);
+                }
+            })
+            .fail(function (err) {
+                alert("Error occurred: " + err.message);
+            });
+        }
+
+
+        $("#btnSubmit").click(function () {
+          let obj = {
+            url: "/org-details-save",
+            type: "post",
+            data: {
+              emailid: $("#emailid").val(),
+              orgname: $("#orgname").val(),
+              regnumber: $("#regnumber").val(),
+              address: $("#address").val(),
+              city: $("#city").val(),
+              sports: $("#sports").val(),
+              website: $("#website").val(),
+              insta: $("#insta").val(),
+              head: $("#head").val(),
+              contact: $("#contact").val(),
+              otherinfo: $("#otherinfo").val(),
+            },
+          };
+
+          $.ajax(obj)
+            .then(function (resp) {
+              alert(resp);
+            })
+            .fail(function (err) {
+              alert("Error occurred: " + err.message);
+            });
+        });
+
+        $("#btnModify").click(function () {
+          let obj = {
+            url: "/org-modify",
+            type: "post",
+            data: {
+              emailid: $("#emailid").val(),
+              orgname: $("#orgname").val(),
+              regnumber: $("#regnumber").val(),
+              address: $("#address").val(),
+              city: $("#city").val(),
+              sports: $("#sports").val(),
+              website: $("#website").val(),
+              insta: $("#insta").val(),
+              head: $("#head").val(),
+              contact: $("#contact").val(),
+              otherinfo: $("#otherinfo").val(),
+            },
+          };
+
+          $.ajax(obj)
+            .then(function (resp) {
+              alert(resp);
+            })
+            .fail(function (err) {
+              alert("Error occurred: " + err.message);
+            });
+        });
+
+        $("#btnSearch").click(function () {
+          let obj = {
+            type: "get",
+            url: "/org-details-get",
+            data: {
+              emailid: $("#emailid").val(),
+            },
+          };
+
+          $.ajax(obj)
+            .then(function (data) {
+              if (typeof data === "string") {
+                alert(data);
+              } else {
+                $("#orgname").val(data.orgname);
+                $("#regnumber").val(data.regnumber);
+                $("#address").val(data.address);
+                $("#city").val(data.city);
+                $("#sports").val(data.sports);
+                $("#website").val(data.website);
+                $("#insta").val(data.insta);
+                $("#head").val(data.head);
+                $("#contact").val(data.contact);
+                $("#otherinfo").val(data.otherinfo);
+              }
+            })
+            .fail(function (err) {
+              alert("Error occurred: " + err.message);
+            });
+        });
+
+        $(document).ajaxStart(function () {
+          $("#waiting").css("display", "block");
+        });
+
+        $(document).ajaxStop(function () {
+          $("#waiting").css("display", "none");
+        });
+      });
+    </script>
+
+    <style>
+      /* footer */
+    footer{background:#0f172a; color:#cbd5e1}
+    </style>
+  </head>
+
+<body class="d-flex flex-column min-vh-100">
+
+  <!-- MAIN -->
+  <main class="flex-fill pt-5 mt-4">
+    <br>
+    <h3 class="text-center mb-4">Organizer Details</h3>
+    <div class="container mt-4 mb-5">
+      <form id="orgForm" enctype="multipart/form-data">
+        <div class="row mb-3">
+          <div class="col-md-12">
+            <label for="emailid" class="form-label">Email Id</label>
+            <input
+              type="text"
+              id="emailid"
+              name="emailid"
+              class="form-control"
+            />
+          </div>
+          <!-- <div class="col-md-4 d-flex align-items-end">
+            <button type="button" class="btn btn-danger w-100" id="btnSearch">
+              Search
+            </button>
+          </div> -->
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Org. Name</label>
+            <input
+              type="text"
+              class="form-control"
+              id="orgname"
+              name="orgname"
+            />
+        </div>
+          <div class="col-md-6">
+            <label class="form-label">Registration Number</label>
+            <input
+              type="text"
+              class="form-control"
+              id="regnumber"
+              name="regnumber"
+            />
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Address</label>
+            <input
+              type="text"
+              class="form-control"
+              id="address"
+              name="address"
+            />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">City</label>
+            <input type="text" class="form-control" id="city" name="city" />
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Deals in Sports</label>
+          <input type="text" class="form-control" id="sports" name="sports" />
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Website</label>
+            <input
+              type="text"
+              class="form-control"
+              id="website"
+              name="website"
+            />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Instagram Link</label>
+            <input type="text" class="form-control" id="insta" name="insta" />
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Org. Head</label>
+            <input type="text" class="form-control" id="head" name="head" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Contact Number</label>
+            <input
+              type="text"
+              class="form-control"
+              id="contact"
+              name="contact"
+            />
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Registration Certificate Pic</label>
+            <input
+              type="file"
+              class="form-control"
+              id="picurl"
+              name="picurl"
+              onchange="showPrev(this, document.getElementById('previewPic'))"
+            />
+          </div>
+          <div class="col-md-6 d-flex align-items-end">
+            <div class="border p-3 w-100 text-center" style="height: 120px">
+              <img
+                id="previewPic"
+                height="100"
+                alt="Preview will appear here"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Other Information</label>
+          <textarea
+            class="form-control"
+            id="otherinfo"
+            name="otherinfo"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="d-flex gap-3">
+          <button type="button" class="btn btn-primary w-50" id="btnSubmit">
+            Send to Server
+          </button>
+          <button type="button" class="btn btn-secondary w-50" id="btnModify">
+            Modify
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+    <!-- FOOTER -->
+  <footer class="py-4">
+    <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-3">
+        <div style="width:46px;height:46px;background:linear-gradient(135deg,var(--accent2),var(--accent1));border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700">PP</div>
+        <div>
+          <div style="font-weight:700">PlayPass</div>
+          <small class="text-light">Connect • Book • Play</small>
+        </div>
+      </div>
+
+      <div class="mt-3 mt-md-0 text-light small">© 2025 PlayPass • Built with ❤️</div>
+    </div>
+  </footer>
+
+
+</body>
+</html>

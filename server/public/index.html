@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayPass — Find & Book Sports Venues</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+
+    <!-- Bootstrap & Icons -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+    />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- email and pwd validation-->
+    <script>
+      // Simple front-end behavior: search, forms, validation
+      $(function () {
+        // Search submit (just demonstrates interaction)
+        $("#quickSearch").on("submit", function (e) {
+          e.preventDefault();
+          const q = $("#searchQuery").val().trim();
+          const sport = $("#sportFilter").val();
+          if (!q && !sport) {
+            alert("Please enter a search query or choose a sport");
+            return;
+          }
+          // In a real app you'd call your backend here. For demo, we scroll to events.
+          window.location.hash = "#events";
+        });
+
+        // Signup validation + fake AJAX
+        $("#signupForm").on("submit", function (e) {
+          e.preventDefault();
+          const email = $("#SignupEmail").val().trim();
+          const pwd = $("#SignupPwd").val();
+          const utype = $("#utype").val();
+
+          const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
+          if (!emailRegex.test(email)) {
+            $("#errMsgE").text("Invalid email");
+            return;
+          } else $("#errMsgE").text("");
+
+          const pwdRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+          if (!pwdRegex.test(pwd)) {
+            $("#errMsgPwd").text("Use 8+ chars, mixed case and a number");
+            return;
+          } else $("#errMsgPwd").text("");
+
+          // fake server response
+          setTimeout(() => {
+            // alert('Signup successful for ' + email + ' (' + utype + ')');
+            $("#SignupBox").modal("hide");
+          }, 600);
+        });
+
+        // Login fake
+        $("#loginForm").on("submit", function (e) {
+          e.preventDefault();
+          const email = $("#loginEmail").val().trim();
+          const pwd = $("#loginPwd").val();
+          // fake check
+          setTimeout(() => {
+            // alert('Login successful: ' + email);
+            $("#loginBox").modal("hide");
+          }, 400);
+        });
+
+        // Eye toggle
+        $("#eye").on("click", function () {
+          const t = $("#SignupPwd").attr("type");
+          if (t === "password") {
+            $("#SignupPwd").attr("type", "text");
+            $(this).removeClass("fa-eye").addClass("fa-eye-slash");
+          } else {
+            $("#SignupPwd").attr("type", "password");
+            $(this).removeClass("fa-eye-slash").addClass("fa-eye");
+          }
+        });
+
+        // contact form simple handler
+        $("#contactForm").on("submit", function (e) {
+          e.preventDefault();
+          alert("Thanks! We'll get back to you soon.");
+          $("#cname").val("");
+          $("#cemail").val("");
+          $("#cmessage").val("");
+        });
+      });
+    </script>
+
+    <!-- AJAX Signup-->
+    <script>
+      $(document).ready(function () {
+        $("#btnSignup").click(function () {
+          let formData = {
+            txtEmail: $("#SignupEmail").val(),
+            txtPwd: $("#SignupPwd").val(),
+            utypee: $("#utype").val(),
+          };
+
+          $.ajax({
+            type: "post",
+            url: "/server-Signup-safe",
+            data: formData,
+          })
+            .then(function (response) {
+              alert(response);
+              if (response === "Signup successful") {
+                $("#SignupBox").hide();
+              }
+            })
+            .fail(function (err) {
+              alert(err.responseText);
+            });
+        });
+
+        //----------------------
+        $("#btnLogin").click(function () {
+          let formData = {
+            txtEmail: $("#loginEmail").val(),
+            txtPwd: $("#loginPwd").val(),
+          };
+
+          $.ajax({
+            type: "post",
+            url: "/server-login-safe",
+            data: formData,
+          })
+            .then(function (response) {
+              alert(response);
+              if (response === "Player") {
+                sessionStorage.setItem("loggedInEmail", $("#loginEmail").val());
+                window.location.href = "dash-player.html";
+              } else if (response === "Organizer") {
+                sessionStorage.setItem("loggedInEmail", $("#loginEmail").val());
+                window.location.href = "orgdash.html";
+              }
+            })
+            .fail(function (err) {
+              alert(err.responseText);
+            });
+        });
+
+        // ---------------------------------
+
+        $("#SignupEmail").blur(function () {
+          let obj = {
+            type: "get",
+            url: "/chkemail",
+            data: {
+              txtEmail: $("#SignupEmail").val(),
+            },
+          };
+          $.ajax(obj)
+            .then(function (response) {
+              $("#errMsgE").html(response);
+            })
+            .fail(function (err) {
+              alert(err);
+            });
+        });
+        //----------------------------------------------------
+
+        $(document).ajaxStart(function () {
+          $("#waiting").css("display", "block");
+        });
+        $(document).ajaxStop(function () {
+          $("#waiting").css("display", "none");
+        });
+      });
+    </script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            function (position) {
+              const userLat = position.coords.latitude;
+              const userLng = position.coords.longitude;
+
+              // Initialize map
+              const map = L.map("map").setView([userLat, userLng], 14);
+
+              // Add OpenStreetMap tiles
+              L.tileLayer(
+                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+                  maxZoom: 19,
+                  attribution: "&copy; OpenStreetMap contributors",
+                }
+              ).addTo(map);
+
+              // User marker
+              L.marker([userLat, userLng])
+                .addTo(map)
+                .bindPopup("<b>You are here!</b>")
+                .openPopup();
+
+              // Example venue markers
+              const venues = [
+                {
+                  lat: userLat + 0.002,
+                  lng: userLng + 0.002,
+                  name: "Elite Football Arena",
+                },
+                {
+                  lat: userLat - 0.003,
+                  lng: userLng + 0.001,
+                  name: "Smash Badminton Hub",
+                },
+              ];
+
+              venues.forEach((v) => {
+                L.marker([v.lat, v.lng]).addTo(map).bindPopup(v.name);
+              });
+            },
+            function () {
+              alert("Location permission denied. Map will not load.");
+            }
+          );
+        } else {
+          alert("Geolocation not supported by your browser.");
+        }
+      });
+    </script>
+
+    <style>
+      :root {
+        --accent1: #ff6b6b; /* coral */
+        --accent2: #4f46e5; /* indigo */
+        --muted: #6c757d;
+        --card-radius: 14px;
+      }
+
+      /* Page layout */
+      body {
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+      }
+
+      /* HERO */
+      .hero {
+        background: linear-gradient(
+            120deg,
+            rgba(79, 70, 229, 0.85),
+            rgba(255, 107, 107, 0.85)
+          ),
+          url("https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=1600&q=80")
+            center/cover no-repeat;
+        color: white;
+        padding: 100px 0;
+        position: relative;
+      }
+      .hero .container {
+        position: relative;
+        z-index: 2;
+      }
+      .hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.1),
+          rgba(0, 0, 0, 0.35)
+        );
+      }
+
+      .hero .overlay.position-absolute.w-100.h-100 {
+        top: 0;
+        left: 0;
+        padding: 0;
+      }
+
+      .search-card {
+        backdrop-filter: blur(6px);
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 18px;
+      }
+      .search-input {
+        background: rgba(255, 255, 255, 0.12);
+        border: none;
+        color: white;
+      }
+      .search-input::placeholder {
+        color: rgba(255, 255, 255, 0.8);
+      }
+
+      /* categories */
+      .cat-card {
+        border-radius: var(--card-radius);
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+      .cat-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+      }
+
+      /* venue cards */
+      .venue-card {
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .venue-info {
+        padding: 12px;
+      }
+
+      /* map placeholder */
+      .map-placeholder {
+        background: linear-gradient(90deg, #e0e7ff, #fef3c7);
+        height: 260px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #333;
+      }
+
+      /* testimonials */
+      .testimonial {
+        background: linear-gradient(180deg, #fff, #f8fafc);
+        border-radius: 12px;
+        padding: 18px;
+      }
+
+      /* footer */
+      footer {
+        background: #0f172a;
+        color: #cbd5e1;
+      }
+
+      @media (max-width: 767px) {
+        .hero {
+          padding: 56px 0;
+        }
+      }
+    </style>
+
+    <style>
+    /* Flip Card Styling */
+    .flip-card {
+      background-color: transparent;
+      perspective: 1000px;
+      max-width: 400px;
+      height: 250px;
+    }
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .flip-card:hover .flip-card-inner {
+      transform: rotateY(180deg);
+    }
+    .flip-card-front,
+    .flip-card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .flip-card-front {
+      background: white;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .flip-card-back {
+      background: #0d6efd;
+      color: white;
+      transform: rotateY(180deg);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    </style>
+  </head>
+  <body class="d-flex flex-column min-vh-100">
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
+      <div class="container">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+          <div
+            style="
+              width: 42px;
+              height: 42px;
+              background: linear-gradient(
+                135deg,
+                var(--accent2),
+                var(--accent1)
+              );
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: 700;
+            "
+          >
+            PP
+          </div>
+          <div class="ms-2">
+            <div style="font-weight: 700">PlayPass</div>
+            <small class="text-muted">Find & Book Sports Venues</small>
+          </div>
+        </a>
+
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navMenu"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navMenu">
+          <ul class="navbar-nav ms-auto align-items-lg-center">
+            <li class="nav-item d-none d-lg-block">
+              <a class="nav-link" href="#features">Features</a>
+            </li>
+            <li class="nav-item d-none d-lg-block">
+              <a class="nav-link" href="#events">Quiz</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#contact">Contact</a>
+            </li>
+            <li class="nav-item ms-2">
+              <button
+                class="btn btn-outline-primary btn-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#loginBox"
+              >
+                Login
+              </button>
+            </li>
+            <li class="nav-item ms-2">
+              <button
+                class="btn btn-primary btn-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#SignupBox"
+              >
+                Sign up
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <header class="hero text-center position-relative">
+      <video
+        autoplay
+        muted
+        loop
+        playsinline
+        class="position-absolute w-100 h-100"
+        style="object-fit: cover; top: 0; left: 0; z-index: 1"
+      >
+        <source
+          src="./pics/videoplayback (1).mp4"
+          type="video/mp4"
+        />
+        Your browser does not support the video tag.
+      </video>
+
+      <div
+        class="overlay position-absolute w-100 h-100"
+        style="
+          background: linear-gradient(
+            120deg,
+            rgba(79, 70, 229, 0.75),
+            rgba(255, 107, 107, 0.75)
+          );
+          z-index: 2;
+        "
+      ></div>
+
+      <div class="container position-relative z-3">
+        <div class="row justify-content-center">
+          <div class="col-lg-8 text-white">
+            <h1 class="display-4 fw-bold animate__animated animate__fadeInDown">
+              Book. Play. Repeat.
+            </h1>
+            <p
+              class="lead mt-3 animate__animated animate__fadeInUp animate__delay-1s"
+            >
+              500+ venues, 10,000+ players, 1 app. Your game starts here.
+            </p>
+
+            <!-- Search card -->
+            <div
+              class="mt-4 search-card shadow-sm animate__animated animate__fadeInUp animate__delay-2s"
+            >
+              <form id="quickSearch" class="row g-2 align-items-center">
+                <div class="col-md-6">
+                  <input
+                    class="form-control search-input"
+                    id="searchQuery"
+                    placeholder="Search for venue, sport, or city"
+                  />
+                </div>
+                <div class="col-md-3">
+                  <select class="form-select" id="sportFilter">
+                    <option value="">All sports</option>
+                    <option>Football</option>
+                    <option>Basketball</option>
+                    <option>Tennis</option>
+                    <option>Badminton</option>
+                  </select>
+                </div>
+                <div class="col-md-3 d-grid">
+                  <button type="submit" class="btn btn-light fw-bold">
+                    Search <i class="fa-solid fa-magnifying-glass ms-1"></i>
+                  </button>
+                </div>
+              </form>
+              <small class="d-block text-white-50 mt-2"
+                >Tip: Try "tennis near me"</small
+              >
+            </div>
+
+            <!-- Quick stats -->
+            <div class="d-flex justify-content-center gap-4 mt-4 fw-bold">
+              <div>
+                <span class="display-6">500+</span><br /><small>Venues</small>
+              </div>
+              <div>
+                <span class="display-6">10K+</span><br /><small>Players</small>
+              </div>
+              <div>
+                <span class="display-6">1K+</span><br /><small>Events</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-fill">
+      <!-- FEATURE HIGHLIGHTS -->
+      <section id="features" class="py-5">
+        <div class="container">
+          <div class="row align-items-center">
+            <div class="col-lg-6">
+              <h2 class="fw-bold">
+                Everything you need to host or find a game
+              </h2>
+              <p class="text-muted">
+                From one-off weekend matches to full tournaments — manage
+                bookings, payments, teams and scores with a few clicks.
+              </p>
+
+              <div class="row g-3 mt-4">
+                <div class="col-12 col-md-6">
+                  <div
+                    class="p-3 cat-card shadow-sm d-flex gap-3 align-items-start"
+                  >
+                    <div class="fs-3 text-primary">
+                      <i class="fa-solid fa-calendar-plus"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-1">Create & Manage Events</h6>
+                      <small class="text-muted"
+                        >Custom schedules, registration, and bracket
+                        support.</small
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div
+                    class="p-3 cat-card shadow-sm d-flex gap-3 align-items-start"
+                  >
+                    <div class="fs-3 text-success">
+                      <i class="fa-solid fa-map-location-dot"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-1">Location Search</h6>
+                      <small class="text-muted"
+                        >Find indoor/outdoor venues with ratings and
+                        photos.</small
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div
+                    class="p-3 cat-card shadow-sm d-flex gap-3 align-items-start"
+                  >
+                    <div class="fs-3 text-warning">
+                      <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-1">Team Management</h6>
+                      <small class="text-muted"
+                        >Invite players, set roles, and track
+                        availability.</small
+                      >
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div
+                    class="p-3 cat-card shadow-sm d-flex gap-3 align-items-start"
+                  >
+                    <div class="fs-3 text-danger">
+                      <i class="fa-solid fa-credit-card"></i>
+                    </div>
+                    <div>
+                      <h6 class="mb-1">Payments & Refunds</h6>
+                      <small class="text-muted"
+                        >Secure checkout & simple refund rules for
+                        organizers.</small
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- INTERACTIVE MAP -->
+            <div class="col-lg-6 mt-4 mt-lg-0">
+              <div id="map" style="height: 400px; border-radius: 10px"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SPORTS QUIZ / FUN FACTS CAROUSEL -->
+      <section id="sports-facts" class="py-5 bg-light">
+        <div class="container">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold">Sports Quiz & Fun Facts</h3>
+            <a href="#" class="link-primary">More Fun Facts</a>
+          </div>
+
+          <div id="quizCarousel" class="carousel slide" data-bs-ride="carousel">
+            <div class="carousel-inner">
+
+              <!-- Card 1 -->
+              <div class="carousel-item active">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>⚽ Which country has won the most FIFA World Cups?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🇧🇷 Brazil</h5>
+                      <p>They’ve won it 5 times: 1958, 1962, 1970, 1994, 2002.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 2 -->
+              <div class="carousel-item">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🏀 Who is known as the “Black Mamba” in basketball?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>Kobe Bryant</h5>
+                      <p>The NBA legend gave himself the nickname to symbolize his deadly play style.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 3 -->
+              <div class="carousel-item">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🎾 What is the fastest tennis serve ever recorded?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>263 km/h</h5>
+                      <p>Achieved by Sam Groth in 2012 at the Busan Open.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 4 -->
+              <div class="carousel-item">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🏏 Who has the highest individual score in ODI cricket?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>Rohit Sharma</h5>
+                      <p>Scored 264 runs against Sri Lanka in 2014.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 5 -->
+              <div class="carousel-item">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🏊‍♂️ Who holds the record for most Olympic gold medals?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>Michael Phelps</h5>
+                      <p>Won 23 Olympic gold medals in swimming.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 6 -->
+              <div class="carousel-item">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🏐 Which country is the current Olympic champion in men's volleyball?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>France</h5>
+                      <p>Won gold at the Tokyo 2020 Olympics.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 7 -->
+              <div class="carousel-item">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🏒 In which sport is the Stanley Cup awarded?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>Ice Hockey</h5>
+                      <p>The Stanley Cup is the championship trophy of the NHL.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 8 -->
+              <div class="carousel-item">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🥊 Who is nicknamed “The Greatest” in boxing?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>Muhammad Ali</h5>
+                      <p>One of the most celebrated sports figures of the 20th century.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 9 -->
+              <div class="carousel-item">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🏹 In which year did archery return to the Olympics?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>1972</h5>
+                      <p>Archery made its comeback at the Munich Olympics.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 10 -->
+              <div class="carousel-item">
+                <div class="flip-card mx-auto">
+                  <div class="flip-card-inner">
+                    <div class="flip-card-front d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>🚴 Who has won the most Tour de France titles?</h5>
+                      <small class="text-muted">Swipe or hover to see more</small>
+                    </div>
+                    <div class="flip-card-back d-flex flex-column justify-content-center align-items-center p-3 text-center">
+                      <h5>Five Winners</h5>
+                      <p>Eddy Merckx, Jacques Anquetil, Bernard Hinault, and Miguel Indurain each have 5 wins.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Controls -->
+            <button class="carousel-control-prev" type="button" data-bs-target="#quizCarousel" data-bs-slide="prev">
+              <span class="carousel-control-prev-icon"></span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#quizCarousel" data-bs-slide="next">
+              <span class="carousel-control-next-icon"></span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TESTIMONIALS + CTA -->
+      <section class="py-5">
+        <div class="container">
+          <div class="row g-4 align-items-center">
+            <div class="col-lg-6">
+              <h3 class="fw-bold">Trusted by thousands of players</h3>
+              <p class="text-muted">
+                Hear from our community — players and organizers who use
+                PlayPass daily.
+              </p>
+
+              <div class="mt-3">
+                <div class="testimonial shadow-sm mb-3">
+                  <p class="mb-1">
+                    "Booked a court within 2 minutes. Clean turf and friendly
+                    staff."
+                  </p>
+                  <small class="text-muted">— Meera K.</small>
+                </div>
+                <div class="testimonial shadow-sm">
+                  <p class="mb-1">
+                    "Organising our 8-team college tournament was surprisingly
+                    easy."
+                  </p>
+                  <small class="text-muted">— Arjun S.</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-6">
+              <div
+                class="p-4 rounded-3"
+                style="
+                  background: linear-gradient(
+                    180deg,
+                    rgba(79, 70, 229, 0.08),
+                    rgba(255, 107, 107, 0.06)
+                  );
+                "
+              >
+                <h5 class="fw-bold">Start your event today</h5>
+                <p class="text-muted">
+                  Create an organizer account and list your venue to reach
+                  thousands of local players.
+                </p>
+                <div class="d-flex gap-2">
+                  <button
+                    class="btn btn-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#SignupBox"
+                  >
+                    Create Organizer Account
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONTACT -->
+      <section id="contact" class="py-5">
+        <div class="container">
+          <div class="row g-4 align-items-center">
+            <div class="col-lg-12">
+              <h3 class="fw-bold">Get in touch</h3>
+              <p class="text-muted">
+                Questions, feedback or venue partnerships — we'd love to hear
+                from you.
+              </p>
+              <form id="contactForm" class="mt-3">
+                <div class="mb-2">
+                  <input
+                    class="form-control"
+                    id="cname"
+                    placeholder="Your name"
+                    required
+                  />
+                </div>
+                <div class="mb-2">
+                  <input
+                    type="email"
+                    class="form-control"
+                    id="cemail"
+                    placeholder="Email"
+                    required
+                  />
+                </div>
+                <div class="mb-2">
+                  <textarea
+                    class="form-control"
+                    id="cmessage"
+                    rows="4"
+                    placeholder="Message"
+                  ></textarea>
+                </div>
+                <div>
+                  <button class="btn btn-primary">Send message</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="py-4">
+      <div
+        class="container d-flex flex-column flex-md-row justify-content-between align-items-center"
+      >
+        <div class="d-flex align-items-center gap-3">
+          <div
+            style="
+              width: 46px;
+              height: 46px;
+              background: linear-gradient(
+                135deg,
+                var(--accent2),
+                var(--accent1)
+              );
+              border-radius: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              font-weight: 700;
+            "
+          >
+            PP
+          </div>
+          <div>
+            <div style="font-weight: 700">PlayPass</div>
+            <small class="text-light">Connect • Book • Play</small>
+          </div>
+        </div>
+
+        <div class="mt-3 mt-md-0 text-light small">
+          © 2025 PlayPass • Built with ❤️
+        </div>
+      </div>
+    </footer>
+
+    <!-- SIGNUP -->
+    <div class="modal fade" id="SignupBox" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Create account</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="signupForm">
+              <div class="mb-2">
+                <label class="form-label">Email</label>
+                <input
+                  type="email"
+                  id="SignupEmail"
+                  class="form-control"
+                  required
+                />
+                <div id="errMsgE" class="text-danger small mt-1"></div>
+              </div>
+              <div class="mb-2 position-relative">
+                <label class="form-label">Password</label>
+                <input
+                  type="password"
+                  id="SignupPwd"
+                  class="form-control"
+                  required
+                />
+                <i
+                  class="fa-solid fa-eye position-absolute"
+                  id="eye"
+                  style="
+                    right: 12px;
+                    top: 42px;
+                    cursor: pointer;
+                    color: #6b7280;
+                  "
+                ></i>
+                <div id="errMsgPwd" class="text-danger small mt-1"></div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">I am a</label>
+                <select id="utype" class="form-select">
+                  <option value="">Select</option>
+                  <option value="Player">Player</option>
+                  <option value="Organizer">Organizer</option>
+                </select>
+              </div>
+              <div class="d-grid">
+                <button type="submit" id="btnSignup" class="btn btn-primary">
+                  Sign up
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="modal fade" id="loginBox" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Login</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="loginForm">
+              <div class="mb-2">
+                <label class="form-label">Email</label>
+                <input
+                  type="email"
+                  id="loginEmail"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Password</label>
+                <input
+                  type="password"
+                  id="loginPwd"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="d-grid">
+                <button type="submit" id="btnLogin" class="btn btn-primary">
+                  Login
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
